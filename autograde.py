@@ -3,134 +3,175 @@ import subprocess
 import shutil
 import Levenshtein
 import zipfile
+import re
 
-def compileCode(fileName):
-	logFile = open("log.txt","w")
+fileFolder = "/files"
+extractedFolder = "/extracted"
+compiledFolder = "/bin"
+logFolder = "/log"
+logFileName = "log.txt"
+inputFileTemplate = "input"
+outputFileTemplate = "output"
+
+def compileCode(fileName, folderLoc, compiledLoc):
+	# Copy elif to add new extensions
 	if (fileName[1] == "py"):
-		shutil.copyfile(fileName[2],"./bin/"+ fileName[2])
+		shutil.copyfile(folderLoc+"/"+fileName[2], compiledLoc+"/"+fileName[2])
 	elif (fileName[1] == "cpp"):
-		print(["gcc", fileName[2], "-o "+ fileName[0]+".bin"])
-		result = subprocess.run(["g++", fileName[2], "-o"+ fileName[0].strip()+".bin"],capture_output=True)
-		print(fileName[2] + ":" + str(result.returncode))
-
+		# Compile
+		result = subprocess.run(["g++", folderLoc+"/"+fileName[2], "-o", compiledLoc+"/"+fileName[0].strip()+".bin"],capture_output=True)
+		
+		# Logging
 		if(result.returncode != 0):
-			logFile.write(fileName[2] + ":" + str(result.stderr))
+			writeLog("[ERR] " + fileName[2] + " compile failed with error:\n" + str(result.stderr) + "\n")
 		else:
-			shutil.move(fileName[0]+".bin","./bin/"+fileName[0]+".bin")
+			# shutil.move(folderLoc+"/"+fileName[0]+".bin", os.curdir + compiledFolder + "/"+ fileName[0]+".bin")
+			writeLog("[INFO] " + fileName[2] + " compile success!" )
+
 	elif (fileName[1] == "f90" or fileName[1] == "f95"):
-		print(["gcc", fileName[2], "-o "+ fileName[0]+".bin"])
-		result = subprocess.run(["g++", fileName[2], "-o"+ fileName[0].strip()+".bin"],capture_output=True)
-		print(fileName[2] + ":" + str(result.returncode))
-
+		# Compile
+		result = subprocess.run(["gfortran", folderLoc+"/"+fileName[2], "-o", compiledLoc+"/"+fileName[0].strip()+".bin"],capture_output=True)
+		
+		# Logging
 		if(result.returncode != 0):
-			logFile.write(fileName[2] + ":" + str(result.stderr))
+			writeLog("[ERR] " + fileName[2] + " compile failed with error:\n" + str(result.stderr) + "\n")
 		else:
-			shutil.move(fileName[0]+".bin","./bin/"+fileName[0]+".bin")
+			# shutil.move(folderLoc+"/"+fileName[0]+".bin", os.curdir + compiledFolder + "/"+ fileName[0]+".bin")
+			writeLog("[INFO] " + fileName[2] + " compile success!" )
 
-	
-	logFile.close()
+def runCode(filename, location, inputText, outputFile):
+	outputText = open(outputFile, "r+").read().lower()
+	filenamearr = splitFileName(filename)
 
+	runlogfilename = os.curdir+logFolder+"/"+filenamearr[0]+".txt"
+	writeLog("Grading with "+ inputText +" : ", runlogfilename)
+	writeLog("Output expected : ", runlogfilename)
+	writeLog(outputText, runlogfilename)
+	writeLog("...", runlogfilename)
 
-def runCode(inputText, outputText):
-	runLog = open('runLog.txt',"w")
-	outputText = outputText.lower()
-	maxScore = Levenshtein.distance('',outputText)
-	runLog.write("Maximum Score : "+str(maxScore)+"\n")
-	runLog.write("=================================\n")
+	name = filenamearr[0]
+	fileExt = filenamearr[1]
+	# Run Process
+	if(fileExt == "py"):
+		proc = subprocess.Popen(["python", location+"/"+filename], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+		proc2 = subprocess.Popen(["python3", location+"/"+filename], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+	elif(fileExt == "bin"):
+		proc = subprocess.Popen([location+"/"+filename], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+		proc2 = None
+	else:
+		proc = None
 
-	# List all files in folder
-	binList = os.walk(os.path.relpath("bin",start=os.getcwd()))
-	listItem = list(map(list,binList))
-	listItem = listItem[0]
-	files = listItem[2]
-	
-	scoring = []
+	timeoutSec = 0.5
 
-	for file in files:
-		fileExt = file.split(".")[1]        
-		# Run Process
-		if(fileExt == "py"):
-			proc = subprocess.Popen(["python", file], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-			proc2 = subprocess.Popen(["python3", file], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-		elif(fileExt == "bin"):
-			proc = subprocess.Popen(["./bin/"+file], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-			proc2 = None
-		else:
-			proc = None
-
-		timeoutSec = 0.5
-
-		# Communicate with process
-		if(proc != None):
-			returnCode = 0
-			try:
-				outs,errs = proc.communicate(timeout=timeoutSec,input=bytes(inputText,"ascii"))
+	# Communicate with process
+	if(proc != None):
+		returnCode = 0
+		try:
+			outs,errs = proc.communicate(timeout=timeoutSec,input=bytes(inputText,"ascii"))
+			returnCode = proc.returncode
+			# Handle Python3 code
+			if(proc2 != None and proc.returncode != 0):
+				outs,errs = proc2.communicate(timeout=timeoutSec,input=bytes(inputText,"ascii"))
 				returnCode = proc.returncode
-				# Handle Python3 code
-				if(proc2 != None and proc.returncode != 0):
-					outs,errs = proc2.communicate(timeout=timeoutSec,input=bytes(inputText,"ascii"))
-					returnCode = proc.returncode
-					print(file + " using python3 and returns " + str(proc2.returncode))
+				writeLog("Python3 - exit code : "+ str(proc2.returncode), runlogfilename)
+			elif(proc2 != None):
+				writeLog("Python2 - exit code : "+ str(proc.returncode), runlogfilename)
+			else:
+				writeLog("BinaryFile - exit code : "+ str(proc.returncode), runlogfilename)
 
-			# Handle timeout
-			except subprocess.TimeoutExpired as e:
-				runLog.write(file + " reached timeout of " + str(timeoutSec) + " seconds\n")
-				proc.kill()
-				outs,errs = proc.communicate()
-				returnCode = proc.returncode
-			
-			# Write logs : result, return code, error message, score
-			if(len(outs)<=1000):
-				resultUpper = outs.decode('ascii').lower()
-				runLog.write(file + " : \n" + resultUpper + "\n")
-			runLog.write("***\n\n")
-			
-			runLog.write("ReturnCode : " + str(returnCode)+"\n")
-			
-			if(returnCode != 0):
-				runLog.write("Error : " + errs.decode('ascii')+"\n")
-			
-			score = maxScore - Levenshtein.distance(resultUpper,outputText)
+		# Handle timeout
+		except subprocess.TimeoutExpired:
+			writeLog(" : "+ str(proc2.returncode), runlogfilename)
+			writeLog("[INFO] "+name + " reached timeout of " + str(timeoutSec) + " seconds\n", runlogfilename)
+			proc.kill()
+			outs,errs = proc.communicate()
+			returnCode = proc.returncode
+		
+		# Write logs : result, return code, error message, score
+		resultUpper = outs.decode('ascii').lower()
+		writeLog(file + " : \n" + resultUpper, runlogfilename)
+		writeLog("***\n\n", runlogfilename)
+		writeLog("ReturnCode : " + str(returnCode), runlogfilename)
+		
+		if(returnCode != 0):
+			writeLog("[ERR] " + errs.decode('ascii'), runlogfilename)
 
-			runLog.write("Score : " + str(score)+"\n")
-			runLog.write("==================================\n\n")
-
-			# Append for csv
-			nim = str(file.split("-")[2])
-			scoring.append([str(nim).split(".")[0], str(returnCode), str(score)])
-
-	runLog.write("nim, returnCode, score\n")
-	for s in scoring:
-		runLog.write(s[0]+","+s[1]+","+s[2]+"\n")
-	runLog.close()
+		writeLog("Score : ", runlogfilename)
+		writeLog("==================================\n\n", runlogfilename)
 
 
-def createFolder(path, folderName, dirlist):
-	if(folderName in dirs):
-		shutil.rmtree(path+folderName)
-	os.mkdir(path+folderName)
+def createFolder(path, folderName, delete=False):
+	listed = listFiles(path)
+	if(delete):
+		if(folderName in listed["dirs"]):
+			shutil.rmtree(path+folderName)
+		os.mkdir(path+folderName)
+	else :
+		if(folderName not in listed["dirs"]):
+			os.mkdir(path+folderName)
 
-# main
-if __name__ == "__main__":
-	walkTuple = os.walk(os.curdir)
+def unzipFiles(fullpathFile, destinationFolder):
+	file = zipfile.ZipFile(fullpathFile,"r")
+	file.extractall
+
+def listFiles(relativePath):
+	walkTuple = os.walk(os.curdir+relativePath)
 	listItem = list(map(list,walkTuple))
 	listItem = listItem[0]
 
-	files = listItem[2]
-	dirs = listItem[1]
+	return {
+		"dirs" : listItem[1],
+		"files" : listItem[2]
+	}
 
-	if(not("input.txt" in files)):
-		raise ValueError("input.txt not found")
+# [name, ext, fullname]
+def splitFileName(fullname):
+	fileName = fullname.split(".")
+	fileName.append(fullname)
+	return fileName
 
-	#createFolder("./", "bin", dirs)
+def writeLog(text, logDest=logFileName):
+	logFile = open(logDest,"a+").read()
+	logFile.write(str(text)+"\n")
 
-	for file in files:
-		fileName = file.split(".")
-		fileName.append(file)
-		#compileCode(fileName)
+# main
+if __name__ == "__main__":
+	homeFolders = listFiles("")
+
+	uploadedFolders = listFiles(fileFolder)
+	print(uploadedFolders)
+
+	# Extract file
+	for folder in uploadedFolders:
+		fileList = listFiles(fileFolder+"/"+folder)
+		for file in fileList["files"]:
+			if(splitFileName(file)[1] == "zip"):
+				try :
+					unzipFiles(fileFolder+"/"+folder+"/"+file, extractedFolder)
+				except zipfile.BadZipFile:
+					writeLog("[ERR] Failed to extract "+file)
 	
-	inputText = open("input.txt","r").read()
-	outputText = open("output.txt","r").read()
-	runCode(inputText, outputText)
+	# Compile all files
+	extractedFiles = listFiles(extractedFolder)
+	for file in extractedFiles["files"]:
+		compileCode(file, os.curdir+extractedFolder, os.curdir+compiledFolder)
+
+	# Run, categorize, and write log
+	compiledFiles = listFiles(compiledFolder)
+	for file in compiledFiles["files"]:
+		filenamearr = splitFileName(file)
+		filename = filenamearr[0].split("-")
+		nim = filename[1]
+		probno = filename[-1:]
+
+		r = re.compile("input"+str(int(probno))+"[a-z].*")
+		inputFiles = list(filter(r.match, homeFolders["files"]))
+
+		for inputfile in inputFiles:
+			print(inputfile)
+			runCode(file, os.curdir+compiledFolder, inputFileTemplate+str(int(probno))+".txt", outputFileTemplate+str(int(probno))+".txt")
+		
+		createFolder(compiledFolder, str(nim))
+		shutil.move(os.curdir+compiledFolder+"/"+str(nim)+"/"+file, os.curdir + compiledFolder + "/"+ file)
 
 	
