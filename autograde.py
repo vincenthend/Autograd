@@ -178,15 +178,17 @@ if __name__ == "__main__":
 	print("Running and testing")
 	createFolder("", logFolder, delete=True)
 	compiledFiles = listFiles(compiledFolder)
-	compiledFilesList = compiledFiles["files"].sort()
-	for file in compiledFilesList:
+	compiledFiles["files"].sort()
+
+	for file in compiledFiles["files"]:
 		filenamearr = splitFileName(file)
 		filename = filenamearr[0].split("-")
 		nim = filename[1]
 		probno = filename[-1:][0]
 
 		r = re.compile("input"+str(int(probno))+"[a-z].*")
-		inputFiles = list(filter(r.match, homeFolders["files"])).sort()
+		inputFiles = list(filter(r.match, homeFolders["files"]))
+		inputFiles.sort()
 		for inputfile in inputFiles:
 			code = inputfile.split(".")[0][-2:]
 			runCode(file, os.curdir+compiledFolder, inputFileTemplate+str(int(probno))+".txt", outputFileTemplate+code+".txt")
