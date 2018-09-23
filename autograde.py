@@ -15,6 +15,7 @@ outputFileTemplate = "output"
 
 def compileCode(fileName, folderLoc, compiledLoc):
 	# Copy elif to add new extensions
+	fileName = splitFileName(fileName)
 	if (fileName[1] == "py"):
 		shutil.copyfile(folderLoc+"/"+fileName[2], compiledLoc+"/"+fileName[2])
 	elif (fileName[1] == "cpp"):
@@ -27,7 +28,6 @@ def compileCode(fileName, folderLoc, compiledLoc):
 		else:
 			# shutil.move(folderLoc+"/"+fileName[0]+".bin", os.curdir + compiledFolder + "/"+ fileName[0]+".bin")
 			writeLog("[INFO] " + fileName[2] + " compile success!" )
-
 	elif (fileName[1] == "f90" or fileName[1] == "f95"):
 		# Compile
 		result = subprocess.run(["gfortran", folderLoc+"/"+fileName[2], "-o", compiledLoc+"/"+fileName[0].strip()+".bin"],capture_output=True)
@@ -40,13 +40,16 @@ def compileCode(fileName, folderLoc, compiledLoc):
 			writeLog("[INFO] " + fileName[2] + " compile success!" )
 
 def runCode(filename, location, inputText, outputFile):
-	outputText = open(outputFile, "r+").read().lower()
 	filenamearr = splitFileName(filename)
 
 	runlogfilename = os.curdir+logFolder+"/"+filenamearr[0]+".txt"
 	writeLog("Grading with "+ inputText +" : ", runlogfilename)
-	writeLog("Output expected : ", runlogfilename)
-	writeLog(outputText, runlogfilename)
+	try:
+		outputText = open(outputFile, "r+").read().lower()
+		writeLog("Output expected : ", runlogfilename)
+		writeLog(outputText, runlogfilename)
+	except:
+		pass
 	writeLog("...", runlogfilename)
 
 	name = filenamearr[0]
@@ -102,23 +105,25 @@ def runCode(filename, location, inputText, outputFile):
 
 def createFolder(path, folderName, delete=False):
 	listed = listFiles(path)
+	clearname = folderName.strip("/")
 	if(delete):
-		if(folderName in listed["dirs"]):
-			shutil.rmtree(path+folderName)
-		os.mkdir(path+folderName)
+		if(clearname in listed["dirs"]):
+			shutil.rmtree(os.curdir+path+folderName)
+		os.mkdir(os.curdir+path+folderName)
 	else :
-		if(folderName not in listed["dirs"]):
-			os.mkdir(path+folderName)
+		if (clearname not in listed["dirs"]):
+			os.mkdir(os.curdir+path+folderName)
 
 def unzipFiles(fullpathFile, destinationFolder):
-	file = zipfile.ZipFile(fullpathFile,"r")
-	file.extractall
+	file = zipfile.ZipFile(os.curdir+fullpathFile,"r")
+	file.extractall(os.curdir+destinationFolder)
+	file.close()
 
 def listFiles(relativePath):
 	walkTuple = os.walk(os.curdir+relativePath)
 	listItem = list(map(list,walkTuple))
 	listItem = listItem[0]
-
+	
 	return {
 		"dirs" : listItem[1],
 		"files" : listItem[2]
@@ -131,47 +136,61 @@ def splitFileName(fullname):
 	return fileName
 
 def writeLog(text, logDest=logFileName):
-	logFile = open(logDest,"a+").read()
+	logFile = open(logDest,"a+")
 	logFile.write(str(text)+"\n")
+	logFile.close()
 
 # main
 if __name__ == "__main__":
-	homeFolders = listFiles("")
+	print("Autograder 2.0")
+	print("|| Supported Languages : python, fortran, cpp")
+	print("|| Next version will include moving file in subfolders")
+	print("|| ")
+	print("")
 
+	homeFolders = listFiles("")
 	uploadedFolders = listFiles(fileFolder)
-	print(uploadedFolders)
 
 	# Extract file
-	for folder in uploadedFolders:
+	print("Extracting files")
+	createFolder("", extractedFolder, delete=False)
+	for folder in uploadedFolders["dirs"]:
 		fileList = listFiles(fileFolder+"/"+folder)
 		for file in fileList["files"]:
 			if(splitFileName(file)[1] == "zip"):
 				try :
 					unzipFiles(fileFolder+"/"+folder+"/"+file, extractedFolder)
+					writeLog("[INFO] Extracted "+file+" in folder "+folder)
 				except zipfile.BadZipFile:
 					writeLog("[ERR] Failed to extract "+file)
 	
+	writeLog("***")
 	# Compile all files
+	print("Compiling all files")
+	createFolder("", compiledFolder, delete=True)
 	extractedFiles = listFiles(extractedFolder)
 	for file in extractedFiles["files"]:
+		writeLog("[INFO] Compiling "+ file)
 		compileCode(file, os.curdir+extractedFolder, os.curdir+compiledFolder)
 
+	writeLog("***")
 	# Run, categorize, and write log
+	print("Running and testing")
+	createFolder("", logFolder, delete=True)
 	compiledFiles = listFiles(compiledFolder)
 	for file in compiledFiles["files"]:
 		filenamearr = splitFileName(file)
 		filename = filenamearr[0].split("-")
 		nim = filename[1]
-		probno = filename[-1:]
+		probno = filename[-1:][0]
 
 		r = re.compile("input"+str(int(probno))+"[a-z].*")
 		inputFiles = list(filter(r.match, homeFolders["files"]))
-
 		for inputfile in inputFiles:
-			print(inputfile)
-			runCode(file, os.curdir+compiledFolder, inputFileTemplate+str(int(probno))+".txt", outputFileTemplate+str(int(probno))+".txt")
+			code = inputfile.split(".")[0][-2:]
+			runCode(file, os.curdir+compiledFolder, inputFileTemplate+str(int(probno))+".txt", outputFileTemplate+code+".txt")
 		
-		createFolder(compiledFolder, str(nim))
-		shutil.move(os.curdir+compiledFolder+"/"+str(nim)+"/"+file, os.curdir + compiledFolder + "/"+ file)
+		createFolder(compiledFolder, "/"+str(nim), True)
+		shutil.move(os.curdir + compiledFolder + "/"+ file, os.curdir+compiledFolder+"/"+str(nim)+"/"+file)
 
 	
