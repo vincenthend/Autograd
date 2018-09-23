@@ -80,7 +80,7 @@ def runCode(filename, location, inputText, outputFile):
 			elif(proc2 != None):
 				writeLog("Python2 - exit code : "+ str(proc.returncode), runlogfilename)
 			else:
-				writeLog("BinaryFile - exit code : "+ str(proc.returncode), runlogfilename)
+				writeLog("BinaryFile", runlogfilename)
 
 		# Handle timeout
 		except subprocess.TimeoutExpired:
@@ -169,8 +169,8 @@ if __name__ == "__main__":
 	print("Compiling all files")
 	createFolder("", compiledFolder, delete=True)
 	extractedFiles = listFiles(extractedFolder)
+	extractedFileList = extractedFiles["files"].sort()
 	for file in extractedFiles["files"]:
-		writeLog("[INFO] Compiling "+ file)
 		compileCode(file, os.curdir+extractedFolder, os.curdir+compiledFolder)
 
 	writeLog("***")
@@ -178,14 +178,15 @@ if __name__ == "__main__":
 	print("Running and testing")
 	createFolder("", logFolder, delete=True)
 	compiledFiles = listFiles(compiledFolder)
-	for file in compiledFiles["files"]:
+	compiledFilesList = compiledFiles["files"].sort()
+	for file in compiledFilesList:
 		filenamearr = splitFileName(file)
 		filename = filenamearr[0].split("-")
 		nim = filename[1]
 		probno = filename[-1:][0]
 
 		r = re.compile("input"+str(int(probno))+"[a-z].*")
-		inputFiles = list(filter(r.match, homeFolders["files"]))
+		inputFiles = list(filter(r.match, homeFolders["files"])).sort()
 		for inputfile in inputFiles:
 			code = inputfile.split(".")[0][-2:]
 			runCode(file, os.curdir+compiledFolder, inputFileTemplate+str(int(probno))+".txt", outputFileTemplate+code+".txt")
