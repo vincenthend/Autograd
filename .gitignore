@@ -1,2 +1,7 @@
 /files/*
 /bin/*
+/log/*
+/extracted/*
+input*
+output*
+log.txt
