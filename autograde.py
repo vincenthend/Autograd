@@ -72,7 +72,7 @@ def runCode(filename, location, inputFile, outputFile):
 	if(proc != None):
 		returnCode = 0
 		try:
-			outs,errs = proc.communicate(timeout=timeoutSec,input=bytes(inputFile,"ascii"))
+			outs,errs = proc.communicate(timeout=timeoutSec,input=bytes(inputText,"ascii"))
 			returnCode = proc.returncode
 			# Handle Python3 code
 			if(proc2 != None and proc.returncode != 0):
