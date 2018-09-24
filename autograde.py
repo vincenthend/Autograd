@@ -10,7 +10,6 @@ extractedFolder = "/extracted"
 compiledFolder = "/bin"
 logFolder = "/log"
 logFileName = "log.txt"
-inputFileTemplate = "input"
 outputFileTemplate = "output"
 
 def compileCode(fileName, folderLoc, compiledLoc):
@@ -39,11 +38,14 @@ def compileCode(fileName, folderLoc, compiledLoc):
 			# shutil.move(folderLoc+"/"+fileName[0]+".bin", os.curdir + compiledFolder + "/"+ fileName[0]+".bin")
 			writeLog("[INFO] " + fileName[2] + " compile success!" )
 
-def runCode(filename, location, inputText, outputFile):
+def runCode(filename, location, inputFile, outputFile):
 	filenamearr = splitFileName(filename)
 
 	runlogfilename = os.curdir+logFolder+"/"+filenamearr[0]+".txt"
-	writeLog("Grading with "+ inputText +" : ", runlogfilename)
+	writeLog("Grading with "+ inputFile +" : ", runlogfilename)
+	writeLog("Content :",runlogfilename)
+	inputText = open(inputFile, "r+").read().lower()
+	writeLog(inputText, runlogfilename)
 	try:
 		outputText = open(outputFile, "r+").read().lower()
 		writeLog("Output expected : ", runlogfilename)
@@ -70,11 +72,11 @@ def runCode(filename, location, inputText, outputFile):
 	if(proc != None):
 		returnCode = 0
 		try:
-			outs,errs = proc.communicate(timeout=timeoutSec,input=bytes(inputText,"ascii"))
+			outs,errs = proc.communicate(timeout=timeoutSec,input=bytes(inputFile,"ascii"))
 			returnCode = proc.returncode
 			# Handle Python3 code
 			if(proc2 != None and proc.returncode != 0):
-				outs,errs = proc2.communicate(timeout=timeoutSec,input=bytes(inputText,"ascii"))
+				outs,errs = proc2.communicate(timeout=timeoutSec,input=bytes(inputFile,"ascii"))
 				returnCode = proc.returncode
 				writeLog("Python3 - exit code : "+ str(proc2.returncode), runlogfilename)
 			elif(proc2 != None):
@@ -183,17 +185,27 @@ if __name__ == "__main__":
 	for file in compiledFiles["files"]:
 		filenamearr = splitFileName(file)
 		filename = filenamearr[0].split("-")
-		nim = filename[1]
-		probno = filename[-1:][0]
-
+		try:
+			nim = filename[1]
+			probno = filename[-1:][0]
+		except:
+			nim = "unknown"
+			writeLog("[ERR] Error in filename, setting NIM to " + nim)
+			
+			print("\n[ERR] Error in filename:",file, "setting NIM to", nim)
+			probno = int(input("What problem number is this? "))
+			
+		
 		r = re.compile("input"+str(int(probno))+"[a-z].*")
 		inputFiles = list(filter(r.match, homeFolders["files"]))
 		inputFiles.sort()
 		for inputfile in inputFiles:
 			code = inputfile.split(".")[0][-2:]
-			runCode(file, os.curdir+compiledFolder, inputFileTemplate+str(int(probno))+".txt", outputFileTemplate+code+".txt")
+			runCode(file, os.curdir+compiledFolder, inputfile, outputFileTemplate+code+".txt")
 		
 		createFolder(compiledFolder, "/"+str(nim), True)
 		shutil.move(os.curdir + compiledFolder + "/"+ file, os.curdir+compiledFolder+"/"+str(nim)+"/"+file)
+
+		
 
 	
