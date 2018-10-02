@@ -203,7 +203,7 @@ if __name__ == "__main__":
 			code = inputfile.split(".")[0][-2:]
 			runCode(file, os.curdir+compiledFolder, inputfile, outputFileTemplate+code+".txt", probno)
 		
-		createFolder(compiledFolder, "/"+str(nim), True)
+		createFolder(compiledFolder, "/"+str(nim), False)
 		shutil.move(os.curdir + compiledFolder + "/"+ file, os.curdir+compiledFolder+"/"+str(nim)+"/"+file)
 
 		
