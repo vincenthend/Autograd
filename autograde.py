@@ -38,10 +38,10 @@ def compileCode(fileName, folderLoc, compiledLoc):
 			# shutil.move(folderLoc+"/"+fileName[0]+".bin", os.curdir + compiledFolder + "/"+ fileName[0]+".bin")
 			writeLog("[INFO] " + fileName[2] + " compile success!" )
 
-def runCode(filename, location, inputFile, outputFile):
+def runCode(filename, location, inputFile, outputFile, probno):
 	filenamearr = splitFileName(filename)
 
-	runlogfilename = os.curdir+logFolder+"/"+filenamearr[0]+".txt"
+	runlogfilename = os.curdir+logFolder+"/"+str(probno)+"/"+filenamearr[0]+".txt"
 	writeLog("Grading with "+ inputFile +" : ", runlogfilename)
 	writeLog("Content :",runlogfilename)
 	inputText = open(inputFile, "r+").read().lower()
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 			if(splitFileName(file)[1] == "zip"):
 				try :
 					unzipFiles(fileFolder+"/"+folder+"/"+file, extractedFolder)
-					writeLog("[INFO] Extracted "+file+" in folder "+folder)
+					//writeLog("[INFO] Extracted "+file+" in folder "+folder)
 				except zipfile.BadZipFile:
 					writeLog("[ERR] Failed to extract "+file)
 	
@@ -195,13 +195,13 @@ if __name__ == "__main__":
 			print("\n[ERR] Error in filename:",file, "setting NIM to", nim)
 			probno = int(input("What problem number is this? "))
 			
-		
+		createFolder("", str(probno), delete=False)
 		r = re.compile("input"+str(int(probno))+"[a-z].*")
 		inputFiles = list(filter(r.match, homeFolders["files"]))
 		inputFiles.sort()
 		for inputfile in inputFiles:
 			code = inputfile.split(".")[0][-2:]
-			runCode(file, os.curdir+compiledFolder, inputfile, outputFileTemplate+code+".txt")
+			runCode(file, os.curdir+compiledFolder, inputfile, outputFileTemplate+code+".txt", probno)
 		
 		createFolder(compiledFolder, "/"+str(nim), True)
 		shutil.move(os.curdir + compiledFolder + "/"+ file, os.curdir+compiledFolder+"/"+str(nim)+"/"+file)

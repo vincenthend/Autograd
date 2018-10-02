@@ -15,6 +15,7 @@ Autograd is a simple autograder to extract and compile code files from PTI class
 1. Create a folder named `files`
 2. Extract collective zip files downloaded from moodle onto the folder created before
 3. Create input files with the name `inputXY.txt` with X is the problem number and Y is the sequence of inputs
+4. (Optional) Create output file with the name `outputXY.txt`
 3. Run `autograder.py`
 
 ## Further Versions
