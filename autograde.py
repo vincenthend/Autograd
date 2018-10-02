@@ -162,7 +162,7 @@ if __name__ == "__main__":
 			if(splitFileName(file)[1] == "zip"):
 				try :
 					unzipFiles(fileFolder+"/"+folder+"/"+file, extractedFolder)
-					//writeLog("[INFO] Extracted "+file+" in folder "+folder)
+					#writeLog("[INFO] Extracted "+file+" in folder "+folder)
 				except zipfile.BadZipFile:
 					writeLog("[ERR] Failed to extract "+file)
 	
@@ -195,7 +195,7 @@ if __name__ == "__main__":
 			print("\n[ERR] Error in filename:",file, "setting NIM to", nim)
 			probno = int(input("What problem number is this? "))
 			
-		createFolder("", str(probno), delete=False)
+		createFolder(logFolder + "/", str(probno), delete=False)
 		r = re.compile("input"+str(int(probno))+"[a-z].*")
 		inputFiles = list(filter(r.match, homeFolders["files"]))
 		inputFiles.sort()
